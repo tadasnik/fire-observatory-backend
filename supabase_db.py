@@ -32,13 +32,19 @@ class SupaDb:
         "active": bool,
     }
 
-
-# Disable supabase connection timeout
+    # Disable supabase connection timeout
     client_options = ClientOptions(postgrest_client_timeout=None)
 
     def __init__(self, url, key):
         self.client: Client | None = create_client(url, key, options=self.client_options)
 
+    def upsert_uk_detections(self, dfr: pd.DataFrame):
+        dfr["active"] = False
+        dfr["timestamp"] = pd.to_datetime(dfr["date"], unit="s", utc=True).astype(str)
+        dfr = dfr.rename({"Region": "region", "admin": "country"}, axis=1)
+        dfr = dfr[self.columns].astype(self.SQL_detections_dtypes)
+        data, count = self.client.table('detections').upsert(dfr.to_dict(orient="records")).execute()
+        return data
 
 if __name__ == "__main__":
     pass
